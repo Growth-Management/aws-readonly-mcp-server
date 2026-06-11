@@ -25,9 +25,16 @@ jobs:
           test -n "${{ secrets.GCP_PROJECT_ID }}"
           test -n "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
           test -n "${{ secrets.GCP_SERVICE_ACCOUNT }}"
+          test -n "${{ secrets.AWS_ROLE_ARN }}"
+          test -n "${{ secrets.AWS_REGION }}"
+          test -n "${{ secrets.MCP_AUTH_TOKEN }}"
           test -n "$GCP_REGION"
           test -n "$CLOUD_RUN_SERVICE_NAME"
           test -n "$ARTIFACT_REGISTRY_REPOSITORY"
+          test -n "${{ vars.APP_ENV }}"
+          test -n "${{ vars.LOG_LEVEL }}"
+          test -n "${{ vars.DEFAULT_LOOKBACK_MONTHS }}"
+          test -n "${{ vars.ENABLED_SERVICES }}"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -39,6 +46,13 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Confirm Artifact Registry repository
+        run: |
+          gcloud artifacts repositories describe "$ARTIFACT_REGISTRY_REPOSITORY" \
+            --location "$GCP_REGION" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --format='value(name)'
 
       - name: Configure Docker auth for Artifact Registry
         run: |
@@ -60,6 +74,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           DEPLOY_ARGS="--image $IMAGE_URI --region ${GCP_REGION} --project ${{ secrets.GCP_PROJECT_ID }} --platform managed"
+          DEPLOY_ARGS="$DEPLOY_ARGS --set-env-vars ^@^APP_ENV=${{ vars.APP_ENV }}@LOG_LEVEL=${{ vars.LOG_LEVEL }}@DEFAULT_LOOKBACK_MONTHS=${{ vars.DEFAULT_LOOKBACK_MONTHS }}@ENABLED_SERVICES=${{ vars.ENABLED_SERVICES }}@AWS_REGION=${{ secrets.AWS_REGION }}@AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}@MCP_AUTH_TOKEN=${{ secrets.MCP_AUTH_TOKEN }}"
           if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
             DEPLOY_ARGS="$DEPLOY_ARGS --allow-unauthenticated"
           fi
@@ -67,7 +82,20 @@ jobs:
 
       - name: Show deployed service URL
         run: |
-          gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
+          SERVICE_URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
             --region "$GCP_REGION" \
             --project "${{ secrets.GCP_PROJECT_ID }}" \
-            --format='value(status.url)'
+            --format='value(status.url)')"
+          echo "$SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> "$GITHUB_ENV"
+
+      - name: Verify health endpoint
+        run: |
+          if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
+            curl --fail --show-error --silent "$SERVICE_URL/health"
+          else
+            IDENTITY_TOKEN="$(gcloud auth print-identity-token --audiences="$SERVICE_URL")"
+            curl --fail --show-error --silent \
+              -H "Authorization: Bearer ${IDENTITY_TOKEN}" \
+              "$SERVICE_URL/health"
+          fi
