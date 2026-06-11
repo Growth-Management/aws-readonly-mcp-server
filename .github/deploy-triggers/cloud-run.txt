@@ -1,0 +1,5 @@
+# Cloud Run deploy trigger
+
+Update this file only when intentionally triggering the Deploy to Cloud Run workflow from an external agent.
+
+Last requested: not yet requested
