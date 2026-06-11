@@ -1,0 +1,76 @@
+name: Deploy to Cloud Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      CLOUD_RUN_SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE_NAME }}
+      ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY }}
+      CLOUD_RUN_ALLOW_UNAUTHENTICATED: ${{ vars.CLOUD_RUN_ALLOW_UNAUTHENTICATED }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required deploy settings
+        run: |
+          test -n "${{ secrets.GCP_PROJECT_ID }}"
+          test -n "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
+          test -n "${{ secrets.GCP_SERVICE_ACCOUNT }}"
+          test -n "$GCP_REGION"
+          test -n "$CLOUD_RUN_SERVICE_NAME"
+          test -n "$ARTIFACT_REGISTRY_REPOSITORY"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${GCP_REGION}-docker.pkg.dev --quiet
+
+      - name: Build image URI
+        run: |
+          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${ARTIFACT_REGISTRY_REPOSITORY}/${CLOUD_RUN_SERVICE_NAME}:${{ github.sha }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Build image
+        run: |
+          docker build -t "$IMAGE_URI" .
+
+      - name: Push image
+        run: |
+          docker push "$IMAGE_URI"
+
+      - name: Deploy to Cloud Run
+        run: |
+          DEPLOY_ARGS="--image $IMAGE_URI --region ${GCP_REGION} --project ${{ secrets.GCP_PROJECT_ID }} --platform managed"
+          if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
+            DEPLOY_ARGS="$DEPLOY_ARGS --allow-unauthenticated"
+          fi
+          gcloud run deploy "$CLOUD_RUN_SERVICE_NAME" $DEPLOY_ARGS
+
+      - name: Show deployed service URL
+        run: |
+          gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
+            --region "$GCP_REGION" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --format='value(status.url)'

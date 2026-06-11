@@ -1,0 +1,40 @@
+name: Validate Config
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-config:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required files
+        run: |
+          test -f README.md
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/validate-config.yml
+
+      - name: Validate env example presence
+        run: |
+          if [ ! -f .env.example ]; then
+            echo ".env.example is missing"
+            exit 1
+          fi
+
+      - name: Validate expected keys in .env.example
+        run: |
+          grep -q '^AWS_ROLE_ARN=' .env.example
+          grep -q '^AWS_REGION=' .env.example
+          grep -q '^MCP_AUTH_TOKEN=' .env.example
+          grep -q '^APP_ENV=' .env.example
+          grep -q '^LOG_LEVEL=' .env.example
+
+      - name: Validate role arn format placeholder
+        run: |
+          if grep -q '^AWS_ROLE_ARN=' .env.example; then
+            echo "AWS_ROLE_ARN key exists"
+          fi
