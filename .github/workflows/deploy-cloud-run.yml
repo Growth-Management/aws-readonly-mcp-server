@@ -94,13 +94,25 @@ jobs:
           echo "$SERVICE_URL"
           echo "SERVICE_URL=$SERVICE_URL" >> "$GITHUB_ENV"
 
-      - name: Verify health endpoint
+      - name: Verify public health endpoint
+        if: env.CLOUD_RUN_ALLOW_UNAUTHENTICATED == 'true'
         run: |
-          if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
-            curl --fail --show-error --silent "$SERVICE_URL/health"
-          else
-            IDENTITY_TOKEN="$(gcloud auth print-identity-token --audiences="$SERVICE_URL")"
-            curl --fail --show-error --silent \
-              -H "Authorization: Bearer ${IDENTITY_TOKEN}" \
-              "$SERVICE_URL/health"
-          fi
+          curl --fail --show-error --silent "$SERVICE_URL/health"
+
+      - name: Authenticate for private health check
+        if: env.CLOUD_RUN_ALLOW_UNAUTHENTICATED != 'true'
+        id: health-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: id_token
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          id_token_audience: ${{ env.SERVICE_URL }}
+          id_token_include_email: true
+
+      - name: Verify private health endpoint
+        if: env.CLOUD_RUN_ALLOW_UNAUTHENTICATED != 'true'
+        run: |
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${{ steps.health-auth.outputs.id_token }}" \
+            "$SERVICE_URL/health"
