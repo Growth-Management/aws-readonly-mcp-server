@@ -30,6 +30,8 @@ jobs:
           test -n "${{ secrets.GCP_PROJECT_ID }}"
           test -n "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
           test -n "${{ secrets.GCP_SERVICE_ACCOUNT }}"
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
           test -n "${{ secrets.AWS_ROLE_ARN }}"
           test -n "${{ secrets.AWS_REGION }}"
           test -n "${{ secrets.MCP_AUTH_TOKEN }}"
@@ -79,7 +81,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           DEPLOY_ARGS="--image $IMAGE_URI --region ${GCP_REGION} --project ${{ secrets.GCP_PROJECT_ID }} --platform managed"
-          DEPLOY_ARGS="$DEPLOY_ARGS --set-env-vars ^@^APP_ENV=${{ vars.APP_ENV }}@LOG_LEVEL=${{ vars.LOG_LEVEL }}@DEFAULT_LOOKBACK_MONTHS=${{ vars.DEFAULT_LOOKBACK_MONTHS }}@ENABLED_SERVICES=${{ vars.ENABLED_SERVICES }}@AWS_REGION=${{ secrets.AWS_REGION }}@AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}@MCP_AUTH_TOKEN=${{ secrets.MCP_AUTH_TOKEN }}"
+          DEPLOY_ARGS="$DEPLOY_ARGS --set-env-vars ^@^APP_ENV=${{ vars.APP_ENV }}@LOG_LEVEL=${{ vars.LOG_LEVEL }}@DEFAULT_LOOKBACK_MONTHS=${{ vars.DEFAULT_LOOKBACK_MONTHS }}@ENABLED_SERVICES=${{ vars.ENABLED_SERVICES }}@AWS_REGION=${{ secrets.AWS_REGION }}@AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}@AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}@AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}@AWS_EXTERNAL_ID=${{ secrets.AWS_EXTERNAL_ID }}@AWS_ROLE_SESSION_NAME=aws-readonly-mcp@MCP_AUTH_TOKEN=${{ secrets.MCP_AUTH_TOKEN }}"
           if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
             DEPLOY_ARGS="$DEPLOY_ARGS --allow-unauthenticated"
           fi
