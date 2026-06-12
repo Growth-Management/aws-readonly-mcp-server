@@ -7,12 +7,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlparse
 
+from src.aws.client_factory import AWSClientFactory
+from src.services.s3_inventory import S3InventoryService
+
 from .config import load_settings
 
 
 class MCPServer:
     def __init__(self) -> None:
         self.settings = load_settings()
+        self.aws_factory = AWSClientFactory(self.settings)
 
     def healthcheck(self) -> dict[str, Any]:
         return {
@@ -21,16 +25,11 @@ class MCPServer:
             "aws_region": self.settings.aws_region,
         }
 
-    def list_s3_buckets(self) -> dict[str, Any]:
-        """Placeholder tool implementation.
+    def get_caller_identity(self) -> dict[str, Any]:
+        return self.aws_factory.get_caller_identity()
 
-        Replace this with a real AWS client call through a dedicated
-        service layer and AWS wrapper.
-        """
-        return {
-            "status": "not_implemented",
-            "message": "list_s3_buckets is not implemented yet",
-        }
+    def list_s3_buckets(self) -> dict[str, Any]:
+        return S3InventoryService(self.aws_factory).list_buckets()
 
 
 def create_server() -> MCPServer:
@@ -47,12 +46,20 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, create_server().healthcheck())
             return
 
+        if path == "/tools/get_caller_identity":
+            if not self._is_authorized():
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"status": "unauthorized"})
+                return
+
+            self._send_json(HTTPStatus.OK, create_server().get_caller_identity())
+            return
+
         if path == "/tools/list_s3_buckets":
             if not self._is_authorized():
                 self._send_json(HTTPStatus.UNAUTHORIZED, {"status": "unauthorized"})
                 return
 
-            self._send_json(HTTPStatus.NOT_IMPLEMENTED, create_server().list_s3_buckets())
+            self._send_json(HTTPStatus.OK, create_server().list_s3_buckets())
             return
 
         self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "path": path})
