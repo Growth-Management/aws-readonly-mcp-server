@@ -2,8 +2,8 @@
 
 Update this file only when intentionally triggering the Deploy to Cloud Run workflow from an external agent.
 
-Last requested: 2026-06-15T09:30:00Z
+Last requested: 2026-06-15T10:08:17Z
 Requested by: ChatGPT AWS cost inventory advisor
-Purpose: Retry Deploy to Cloud Run after fixing MCP_AUTH_TOKEN env var type conflict.
+Purpose: Trigger Deploy to Cloud Run after fixing MCP_AUTH_TOKEN env var type conflict.
 Target merge commit: de37a73d982b334a6dc7ffa5d98397cbb3caedb9
 Workflow fix commit: 80fe33be214b27cffed86d6b4ace8dff58536dcb
