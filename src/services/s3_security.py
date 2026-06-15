@@ -4,10 +4,8 @@ import json
 from typing import Any, Callable
 
 from botocore.exceptions import BotoCoreError, ClientError
-
 from src.aws.client_factory import AWSClientFactory
 from src.services.s3_inventory import NOT_CONFIGURED_ERROR_CODES
-
 
 PUBLIC_ACL_URIS = {
     "http://acs.amazonaws.com/groups/global/AllUsers",

@@ -29,5 +29,6 @@ class S3MetricsService:
         return _metric_response(
             bucket_name,
             "BytesDownloaded/BytesUploaded",
-            "Transfer summaries require CloudWatch metrics, Storage Lens, access logs, or Cost Explorer.",
+            "Transfer summaries require CloudWatch metrics, Storage Lens, access logs, "
+            "or Cost Explorer.",
         )

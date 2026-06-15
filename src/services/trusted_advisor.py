@@ -4,7 +4,6 @@ from typing import Any
 
 from src.aws.client_factory import AWSClientFactory
 
-
 TRUSTED_ADVISOR_CATEGORIES = {
     "cost_optimizing",
     "security",
@@ -27,7 +26,8 @@ class TrustedAdvisorService:
                 "status": "error",
                 "error_type": type(error).__name__,
                 "message": str(error),
-                "note": "Trusted Advisor API requires a support plan that exposes the AWS Support API.",
+                "note": "Trusted Advisor API requires a support plan that exposes "
+                "the AWS Support API.",
             }
 
         filtered = [

@@ -97,7 +97,9 @@ class MCPServer:
             },
             {
                 "name": "get_s3_bucket_details",
-                "description": "Return read-only metadata and operational settings for one S3 bucket.",
+                "description": (
+                    "Return read-only metadata and operational settings for one S3 bucket."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {"bucket_name": {"type": "string"}},
@@ -107,7 +109,9 @@ class MCPServer:
             },
             {
                 "name": "get_s3_bucket_security",
-                "description": "Return read-only public access, ACL, policy, and encryption details.",
+                "description": (
+                    "Return read-only public access, ACL, policy, and encryption details."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {"bucket_name": {"type": "string"}},
@@ -117,7 +121,9 @@ class MCPServer:
             },
             {
                 "name": "get_s3_cost_summary",
-                "description": "Return S3-related Cost Explorer usage and cost grouped by usage type.",
+                "description": (
+                    "Return S3-related Cost Explorer usage and cost grouped by usage type."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {"months": {"type": "integer", "default": 3}},
@@ -150,12 +156,17 @@ class MCPServer:
             },
             {
                 "name": "get_ses_basic_health",
-                "description": "Return SES identity count, sandbox/production access, and send quota basics.",
+                "description": (
+                    "Return SES identity count, sandbox/production access, and send quota basics."
+                ),
                 "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
             },
             {
                 "name": "list_trusted_advisor_checks",
-                "description": "List Trusted Advisor checks for cost, security, performance, fault tolerance, and service limits.",
+                "description": (
+                    "List Trusted Advisor checks for cost, security, performance, "
+                    "fault tolerance, and service limits."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {"language": {"type": "string", "default": "ja"}},
@@ -318,7 +329,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/tools/get_s3_cost_summary":
-            self._send_json(HTTPStatus.OK, server.get_s3_cost_summary(_int_query(query, "months", 3)))
+            self._send_json(
+                HTTPStatus.OK,
+                server.get_s3_cost_summary(_int_query(query, "months", 3)),
+            )
             return
 
         if path == "/tools/get_monthly_cost_by_service":
