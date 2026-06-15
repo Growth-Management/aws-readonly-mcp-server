@@ -16,9 +16,27 @@ class Settings:
     aws_role_session_name: str = "aws-readonly-mcp"
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
+    enabled_services: tuple[str, ...] = (
+        "cost-explorer",
+        "cloudwatch",
+        "s3",
+        "ec2",
+        "rds",
+        "ses",
+        "trusted-advisor",
+    )
 
 
 def load_settings() -> Settings:
+    enabled_services = tuple(
+        service.strip()
+        for service in os.getenv(
+            "ENABLED_SERVICES",
+            "cost-explorer,cloudwatch,s3,ec2,rds,ses,trusted-advisor",
+        ).split(",")
+        if service.strip()
+    )
+
     return Settings(
         aws_role_arn=os.getenv("AWS_ROLE_ARN", ""),
         aws_region=os.getenv("AWS_REGION", "ap-northeast-1"),
@@ -30,4 +48,5 @@ def load_settings() -> Settings:
         aws_role_session_name=os.getenv("AWS_ROLE_SESSION_NAME", "aws-readonly-mcp"),
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", ""),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+        enabled_services=enabled_services,
     )
