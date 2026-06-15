@@ -78,10 +78,23 @@ jobs:
         run: |
           docker push "$IMAGE_URI"
 
+      - name: Remove conflicting MCP auth token secret binding
+        run: |
+          if gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
+            --region "$GCP_REGION" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --platform managed >/dev/null 2>&1; then
+            gcloud run services update "$CLOUD_RUN_SERVICE_NAME" \
+              --region "$GCP_REGION" \
+              --project "${{ secrets.GCP_PROJECT_ID }}" \
+              --platform managed \
+              --remove-secrets MCP_AUTH_TOKEN \
+              --quiet
+          fi
+
       - name: Deploy to Cloud Run
         run: |
           DEPLOY_ARGS="--image $IMAGE_URI --region ${GCP_REGION} --project ${{ secrets.GCP_PROJECT_ID }} --platform managed"
-          DEPLOY_ARGS="$DEPLOY_ARGS --remove-secrets MCP_AUTH_TOKEN"
           DEPLOY_ARGS="$DEPLOY_ARGS --set-env-vars ^@^APP_ENV=${{ vars.APP_ENV }}@LOG_LEVEL=${{ vars.LOG_LEVEL }}@DEFAULT_LOOKBACK_MONTHS=${{ vars.DEFAULT_LOOKBACK_MONTHS }}@ENABLED_SERVICES=${{ vars.ENABLED_SERVICES }}@AWS_REGION=${{ secrets.AWS_REGION }}@AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}@AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}@AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}@AWS_EXTERNAL_ID=${{ secrets.AWS_EXTERNAL_ID }}@AWS_ROLE_SESSION_NAME=aws-readonly-mcp@MCP_AUTH_TOKEN=${{ secrets.MCP_AUTH_TOKEN }}"
           if [ "$CLOUD_RUN_ALLOW_UNAUTHENTICATED" = "true" ]; then
             DEPLOY_ARGS="$DEPLOY_ARGS --allow-unauthenticated"
