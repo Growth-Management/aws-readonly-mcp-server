@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-
 from src.server.config import Settings, load_settings
 
 
@@ -13,9 +10,11 @@ class AWSClientFactory:
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or load_settings()
-        self._session: boto3.Session | None = None
+        self._session: Any | None = None
 
-    def create_session(self) -> boto3.Session:
+    def create_session(self) -> Any:
+        import boto3
+
         if self._session is not None:
             return self._session
 
@@ -24,7 +23,6 @@ class AWSClientFactory:
             aws_secret_access_key=self.settings.aws_secret_access_key or None,
             region_name=self.settings.aws_region,
         )
-
         if not self.settings.aws_role_arn:
             self._session = base_session
             return self._session
@@ -47,13 +45,16 @@ class AWSClientFactory:
         )
         return self._session
 
-    def create_client(self, service_name: str) -> Any:
-        return self.create_session().client(service_name, region_name=self.settings.aws_region)
+    def create_client(self, service_name: str, region_name: str | None = None) -> Any:
+        return self.create_session().client(
+            service_name,
+            region_name=region_name or self.settings.aws_region,
+        )
 
     def get_caller_identity(self) -> dict[str, Any]:
         try:
             return self.create_client("sts").get_caller_identity()
-        except (BotoCoreError, ClientError) as exc:
+        except Exception as exc:
             return {
                 "status": "error",
                 "error_type": exc.__class__.__name__,
