@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -82,6 +83,206 @@ class MCPServer:
     def list_trusted_advisor_checks(self, language: str = "ja") -> dict[str, Any]:
         return self.trusted_advisor.list_checks(language=language)
 
+    def list_mcp_tools(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": "get_caller_identity",
+                "description": "Return the AWS caller identity used by the server.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "list_s3_buckets",
+                "description": "List S3 buckets visible to the configured read-only role.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "get_s3_bucket_details",
+                "description": "Return read-only metadata and operational settings for one S3 bucket.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"bucket_name": {"type": "string"}},
+                    "required": ["bucket_name"],
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_s3_bucket_security",
+                "description": "Return read-only public access, ACL, policy, and encryption details.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"bucket_name": {"type": "string"}},
+                    "required": ["bucket_name"],
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_s3_cost_summary",
+                "description": "Return S3-related Cost Explorer usage and cost grouped by usage type.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"months": {"type": "integer", "default": 3}},
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_monthly_cost_by_service",
+                "description": "Return monthly Cost Explorer totals grouped by AWS service.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"months": {"type": "integer", "default": 3}},
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "list_ec2_instances",
+                "description": "List EC2 instances visible in the configured region.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "list_ec2_volumes",
+                "description": "List EBS volumes visible in the configured region.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "list_rds_db_instances",
+                "description": "List RDS DB instances visible in the configured region.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "get_ses_basic_health",
+                "description": "Return SES identity count, sandbox/production access, and send quota basics.",
+                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+            {
+                "name": "list_trusted_advisor_checks",
+                "description": "List Trusted Advisor checks for cost, security, performance, fault tolerance, and service limits.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"language": {"type": "string", "default": "ja"}},
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_s3_request_metrics",
+                "description": "Report whether S3 request metrics are available for a bucket.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"bucket_name": {"type": "string"}},
+                    "required": ["bucket_name"],
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_s3_transfer_summary",
+                "description": "Report whether S3 transfer metrics are available for a bucket.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"bucket_name": {"type": "string"}},
+                    "required": ["bucket_name"],
+                    "additionalProperties": False,
+                },
+            },
+        ]
+
+    def handle_mcp_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
+        request_id = request.get("id")
+        method = request.get("method")
+        params = request.get("params", {})
+
+        if request_id is None:
+            return None
+
+        if method == "initialize":
+            return self._mcp_result(
+                request_id,
+                {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "aws-readonly-mcp-server", "version": "0.1.0"},
+                },
+            )
+
+        if method == "tools/list":
+            return self._mcp_result(request_id, {"tools": self.list_mcp_tools()})
+
+        if method == "tools/call":
+            return self._handle_tool_call(request_id, params)
+
+        return self._mcp_error(request_id, -32601, f"Method not found: {method}")
+
+    def _handle_tool_call(self, request_id: Any, params: dict[str, Any]) -> dict[str, Any]:
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {}) or {}
+
+        if tool_name == "get_caller_identity":
+            payload = self.get_caller_identity()
+        elif tool_name == "list_s3_buckets":
+            payload = self.list_s3_buckets()
+        elif tool_name == "get_s3_bucket_details":
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            if not bucket_name:
+                return self._tool_error(request_id, "bucket_name is required")
+            payload = self.get_s3_bucket_details(str(bucket_name))
+        elif tool_name == "get_s3_bucket_security":
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            if not bucket_name:
+                return self._tool_error(request_id, "bucket_name is required")
+            payload = self.get_s3_bucket_security(str(bucket_name))
+        elif tool_name == "get_s3_cost_summary":
+            payload = self.get_s3_cost_summary(int(arguments.get("months", 3)))
+        elif tool_name == "get_monthly_cost_by_service":
+            payload = self.get_monthly_cost_by_service(int(arguments.get("months", 3)))
+        elif tool_name == "list_ec2_instances":
+            payload = self.list_ec2_instances()
+        elif tool_name == "list_ec2_volumes":
+            payload = self.list_ec2_volumes()
+        elif tool_name == "list_rds_db_instances":
+            payload = self.list_rds_db_instances()
+        elif tool_name == "get_ses_basic_health":
+            payload = self.get_ses_basic_health()
+        elif tool_name == "list_trusted_advisor_checks":
+            payload = self.list_trusted_advisor_checks(str(arguments.get("language", "ja")))
+        elif tool_name == "get_s3_request_metrics":
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            if not bucket_name:
+                return self._tool_error(request_id, "bucket_name is required")
+            payload = self.get_s3_request_metrics(str(bucket_name))
+        elif tool_name == "get_s3_transfer_summary":
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            if not bucket_name:
+                return self._tool_error(request_id, "bucket_name is required")
+            payload = self.get_s3_transfer_summary(str(bucket_name))
+        else:
+            return self._mcp_error(request_id, -32602, f"Unknown tool: {tool_name}")
+
+        return self._mcp_result(request_id, self._tool_content(payload))
+
+    def _tool_error(self, request_id: Any, message: str) -> dict[str, Any]:
+        payload = {"status": "error", "message": message}
+        return self._mcp_result(request_id, {**self._tool_content(payload), "isError": True})
+
+    def _tool_content(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        payload,
+                        default=_json_default,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                }
+            ],
+            "structuredContent": payload,
+        }
+
+    def _mcp_result(self, request_id: Any, result: dict[str, Any]) -> dict[str, Any]:
+        return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+    def _mcp_error(self, request_id: Any, code: int, message: str) -> dict[str, Any]:
+        return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+
 
 def create_server() -> MCPServer:
     return MCPServer()
@@ -99,35 +300,39 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, create_server().healthcheck())
             return
 
-        if not path.startswith("/tools/"):
-            self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "path": path})
-            return
-
         if not self._is_authorized():
             self._send_json(HTTPStatus.UNAUTHORIZED, {"status": "unauthorized"})
             return
 
         server = create_server()
-        routes = {
-            "/tools/get_caller_identity": lambda: server.get_caller_identity(),
-            "/tools/list_s3_buckets": lambda: server.list_s3_buckets(),
-            "/tools/get_s3_cost_summary": lambda: server.get_s3_cost_summary(
-                months=_int_query(query, "months", 3)
-            ),
-            "/tools/get_monthly_cost_by_service": lambda: server.get_monthly_cost_by_service(
-                months=_int_query(query, "months", 3)
-            ),
-            "/tools/list_ec2_instances": lambda: server.list_ec2_instances(),
-            "/tools/list_ec2_volumes": lambda: server.list_ec2_volumes(),
-            "/tools/list_rds_db_instances": lambda: server.list_rds_db_instances(),
-            "/tools/get_ses_basic_health": lambda: server.get_ses_basic_health(),
-            "/tools/list_trusted_advisor_checks": lambda: server.list_trusted_advisor_checks(
-                language=_str_query(query, "language", "ja")
-            ),
+        simple_routes = {
+            "/tools/get_caller_identity": server.get_caller_identity,
+            "/tools/list_s3_buckets": server.list_s3_buckets,
+            "/tools/list_ec2_instances": server.list_ec2_instances,
+            "/tools/list_ec2_volumes": server.list_ec2_volumes,
+            "/tools/list_rds_db_instances": server.list_rds_db_instances,
+            "/tools/get_ses_basic_health": server.get_ses_basic_health,
         }
+        if path in simple_routes:
+            self._send_json(HTTPStatus.OK, simple_routes[path]())
+            return
 
-        if path in routes:
-            self._send_json(HTTPStatus.OK, routes[path]())
+        if path == "/tools/get_s3_cost_summary":
+            self._send_json(HTTPStatus.OK, server.get_s3_cost_summary(_int_query(query, "months", 3)))
+            return
+
+        if path == "/tools/get_monthly_cost_by_service":
+            self._send_json(
+                HTTPStatus.OK,
+                server.get_monthly_cost_by_service(_int_query(query, "months", 3)),
+            )
+            return
+
+        if path == "/tools/list_trusted_advisor_checks":
+            self._send_json(
+                HTTPStatus.OK,
+                server.list_trusted_advisor_checks(_str_query(query, "language", "ja")),
+            )
             return
 
         bucket_routes = {
@@ -137,17 +342,48 @@ class RequestHandler(BaseHTTPRequestHandler):
             "/tools/get_s3_transfer_summary": server.get_s3_transfer_summary,
         }
         if path in bucket_routes:
-            bucket_name = _str_query(query, "bucket_name", "")
+            bucket_name = self._first_query_value(query, "bucket") or self._first_query_value(
+                query, "bucket_name"
+            )
             if not bucket_name:
                 self._send_json(
                     HTTPStatus.BAD_REQUEST,
-                    {"status": "bad_request", "message": "bucket_name query parameter is required"},
+                    {"status": "error", "message": "bucket is required"},
                 )
                 return
             self._send_json(HTTPStatus.OK, bucket_routes[path](bucket_name))
             return
 
         self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "path": path})
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        if path != "/mcp":
+            self._send_json(HTTPStatus.NOT_FOUND, {"status": "not_found", "path": path})
+            return
+
+        if not self._is_authorized():
+            self._send_json(HTTPStatus.UNAUTHORIZED, {"status": "unauthorized"})
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(content_length).decode("utf-8")
+            request = json.loads(body) if body else {}
+        except (json.JSONDecodeError, ValueError):
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+            )
+            return
+
+        response = create_server().handle_mcp_request(request)
+        if response is None:
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.end_headers()
+            return
+
+        self._send_json(HTTPStatus.OK, response)
 
     def log_message(self, format: str, *args: Any) -> None:
         if os.getenv("LOG_LEVEL", "INFO").upper() != "ERROR":
@@ -161,8 +397,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         auth_header = self.headers.get("Authorization", "")
         return auth_header == f"Bearer {expected_token}"
 
+    def _first_query_value(self, query: dict[str, list[str]], name: str) -> str | None:
+        values = query.get(name, [])
+        return values[0] if values else None
+
     def _send_json(self, status_code: HTTPStatus, payload: dict[str, Any]) -> None:
-        body = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        body = json.dumps(payload, default=_json_default, sort_keys=True).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -189,6 +429,12 @@ def run_http_server() -> None:
     port = int(os.getenv("PORT", "8080"))
     httpd = ThreadingHTTPServer(("0.0.0.0", port), RequestHandler)
     httpd.serve_forever()
+
+
+def _json_default(value: Any) -> str:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    return str(value)
 
 
 if __name__ == "__main__":
