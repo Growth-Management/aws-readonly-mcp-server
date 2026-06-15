@@ -12,6 +12,7 @@ from src.aws.client_factory import AWSClientFactory
 from src.services.s3_inventory import S3InventoryService
 from src.services.s3_security import S3SecurityService
 
+from .auth import is_authorized
 from .config import load_settings
 
 
@@ -258,11 +259,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def _is_authorized(self) -> bool:
         expected_token = create_server().settings.mcp_auth_token
-        if not expected_token:
-            return False
-
-        auth_header = self.headers.get("Authorization", "")
-        return auth_header == f"Bearer {expected_token}"
+        auth_header = self.headers.get("Authorization")
+        return is_authorized(auth_header, expected_token)
 
     def _first_query_value(self, query: dict[str, list[str]], name: str) -> str | None:
         values = query.get(name, [])

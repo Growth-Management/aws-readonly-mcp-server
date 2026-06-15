@@ -39,6 +39,13 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/services/s3_inventory.py" = ["I001"]
+"src/services/s3_security.py" = ["I001"]
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
