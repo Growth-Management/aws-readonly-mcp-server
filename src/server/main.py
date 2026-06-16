@@ -406,11 +406,11 @@ def call_tool(
     return response["result"].get("structuredContent", response["result"])
 
 
-@app.post("/mcp")
+@app.post("/mcp", response_model=None)
 async def mcp_endpoint(
     request: Request,
     authorization: str | None = Header(default=None),
-) -> dict[str, Any] | Response:
+) -> Any:
     verify_bearer_token(authorization)
 
     try:
