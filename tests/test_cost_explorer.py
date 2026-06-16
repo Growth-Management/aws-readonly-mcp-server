@@ -22,7 +22,11 @@ class FakeFactory:
         self.client = FakeCostExplorerClient()
         self.calls: list[tuple[str, str | None]] = []
 
-    def create_client(self, service_name: str, region_name: str | None = None) -> FakeCostExplorerClient:
+    def create_client(
+        self,
+        service_name: str,
+        region_name: str | None = None,
+    ) -> FakeCostExplorerClient:
         self.calls.append((service_name, region_name))
         return self.client
 
