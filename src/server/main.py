@@ -244,34 +244,41 @@ class MCPServer:
     def _handle_tool_call(self, request_id: Any, params: dict[str, Any]) -> dict[str, Any]:
         tool_name = params.get("name")
         arguments = params.get("arguments", {}) or {}
+        months = int(arguments.get("months", 3))
 
         if tool_name == "get_caller_identity":
             payload = self.get_caller_identity()
         elif tool_name == "list_s3_buckets":
             payload = self.list_s3_buckets()
-        elif tool_name == "get_s3_bucket_details":
-            payload = self.get_s3_bucket_details(_required_bucket(request_id, arguments, self))
-        elif tool_name == "get_s3_bucket_security":
-            payload = self.get_s3_bucket_security(_required_bucket(request_id, arguments, self))
+        elif tool_name in {
+            "get_s3_bucket_details",
+            "get_s3_bucket_security",
+            "get_s3_request_metrics",
+            "get_s3_transfer_summary",
+        }:
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            if not bucket_name:
+                return self._tool_error(request_id, "bucket_name is required")
+            payload = self._call_bucket_tool(str(tool_name), str(bucket_name))
         elif tool_name == "get_s3_cost_summary":
-            payload = self.get_s3_cost_summary(int(arguments.get("months", 3)))
+            payload = self.get_s3_cost_summary(months)
         elif tool_name == "get_cost_overview":
-            payload = self.get_cost_overview(int(arguments.get("months", 3)))
+            payload = self.get_cost_overview(months)
         elif tool_name == "get_cost_by_service":
-            payload = self.get_cost_by_service(int(arguments.get("months", 3)))
+            payload = self.get_cost_by_service(months)
         elif tool_name == "get_monthly_cost_by_service":
-            payload = self.get_monthly_cost_by_service(int(arguments.get("months", 3)))
+            payload = self.get_monthly_cost_by_service(months)
         elif tool_name == "get_cost_by_account":
-            payload = self.get_cost_by_account(int(arguments.get("months", 3)))
+            payload = self.get_cost_by_account(months)
         elif tool_name == "get_cost_by_tag":
             tag_key = arguments.get("tag_key")
             if not tag_key:
                 return self._tool_error(request_id, "tag_key is required")
-            payload = self.get_cost_by_tag(str(tag_key), int(arguments.get("months", 3)))
+            payload = self.get_cost_by_tag(str(tag_key), months)
         elif tool_name == "get_cost_trend":
-            payload = self.get_cost_trend(int(arguments.get("months", 3)))
+            payload = self.get_cost_trend(months)
         elif tool_name == "get_cost_forecast":
-            payload = self.get_cost_forecast(int(arguments.get("months", 3)))
+            payload = self.get_cost_forecast(months)
         elif tool_name == "get_cloudwatch_metric_summary":
             service_name = arguments.get("service_name")
             payload = self.get_cloudwatch_metric_summary(
@@ -295,14 +302,19 @@ class MCPServer:
             payload = self.get_ses_basic_health()
         elif tool_name == "list_trusted_advisor_checks":
             payload = self.list_trusted_advisor_checks(str(arguments.get("language", "ja")))
-        elif tool_name == "get_s3_request_metrics":
-            payload = self.get_s3_request_metrics(_required_bucket(request_id, arguments, self))
-        elif tool_name == "get_s3_transfer_summary":
-            payload = self.get_s3_transfer_summary(_required_bucket(request_id, arguments, self))
         else:
             return self._mcp_error(request_id, -32602, f"Unknown tool: {tool_name}")
 
         return self._mcp_result(request_id, self._tool_content(payload))
+
+    def _call_bucket_tool(self, tool_name: str, bucket_name: str) -> dict[str, Any]:
+        if tool_name == "get_s3_bucket_details":
+            return self.get_s3_bucket_details(bucket_name)
+        if tool_name == "get_s3_bucket_security":
+            return self.get_s3_bucket_security(bucket_name)
+        if tool_name == "get_s3_request_metrics":
+            return self.get_s3_request_metrics(bucket_name)
+        return self.get_s3_transfer_summary(bucket_name)
 
     def _tool_error(self, request_id: Any, message: str) -> dict[str, Any]:
         payload = {"status": "error", "message": message}
@@ -441,13 +453,6 @@ def _months_tool(name: str, description: str) -> dict[str, Any]:
     }
 
 
-def _required_bucket(request_id: Any, arguments: dict[str, Any], server: MCPServer) -> str:
-    bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
-    if not bucket_name:
-        raise ToolInputError(server._tool_error(request_id, "bucket_name is required"))
-    return str(bucket_name)
-
-
 def _query_arguments(query: dict[str, str]) -> dict[str, Any]:
     arguments: dict[str, Any] = dict(query)
     if "bucket" in arguments and "bucket_name" not in arguments:
@@ -471,11 +476,6 @@ def _json_default(value: Any) -> str:
     if isinstance(value, (date, datetime)):
         return value.isoformat()
     return str(value)
-
-
-class ToolInputError(Exception):
-    def __init__(self, response: dict[str, Any]) -> None:
-        self.response = response
 
 
 if __name__ == "__main__":
