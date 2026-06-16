@@ -145,7 +145,9 @@ class MCPServer:
             ),
             {
                 "name": "get_cost_by_tag",
-                "description": "Return monthly Cost Explorer totals grouped by a cost allocation tag.",
+                "description": (
+                    "Return monthly Cost Explorer totals grouped by a cost allocation tag."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -169,7 +171,9 @@ class MCPServer:
             },
             {
                 "name": "get_idle_resource_signals",
-                "description": "Return coarse CloudWatch signal readiness for idle-resource analysis.",
+                "description": (
+                    "Return coarse CloudWatch signal readiness for idle-resource analysis."
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {"service_name": {"type": "string"}},
@@ -188,7 +192,10 @@ class MCPServer:
             },
             _tool("list_ec2_instances", "List EC2 instances visible in the configured region."),
             _tool("list_ec2_volumes", "List EBS volumes visible in the configured region."),
-            _tool("list_rds_db_instances", "List RDS DB instances visible in the configured region."),
+            _tool(
+                "list_rds_db_instances",
+                "List RDS DB instances visible in the configured region.",
+            ),
             _tool(
                 "get_ses_basic_health",
                 "Return SES identity count, sandbox/production access, and send quota basics.",
@@ -411,7 +418,11 @@ async def mcp_endpoint(
     except Exception as error:
         raise HTTPException(
             status_code=400,
-            detail={"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+            detail={
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {"code": -32700, "message": "Parse error"},
+            },
         ) from error
 
     response = create_server().handle_mcp_request(body)
