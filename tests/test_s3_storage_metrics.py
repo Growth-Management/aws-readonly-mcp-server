@@ -7,7 +7,10 @@ class FakePaginator:
     def paginate(self, **kwargs):
         metric_name = kwargs["MetricName"]
         bucket_name = kwargs.get("Dimensions", [{}])[0].get("Value", "example-bucket")
-        storage_types = ["StandardStorage"] if metric_name == "BucketSizeBytes" else ["AllStorageTypes"]
+        if metric_name == "BucketSizeBytes":
+            storage_types = ["StandardStorage"]
+        else:
+            storage_types = ["AllStorageTypes"]
         return [
             {
                 "Metrics": [
@@ -31,14 +34,20 @@ class FakeCloudWatchClient:
         return FakePaginator()
 
     def get_metric_statistics(self, MetricName, Dimensions, **kwargs):
-        storage_type = {dimension["Name"]: dimension["Value"] for dimension in Dimensions}["StorageType"]
+        storage_type = {dimension["Name"]: dimension["Value"] for dimension in Dimensions}[
+            "StorageType"
+        ]
         if MetricName == "BucketSizeBytes" and storage_type == "StandardStorage":
             average = 1073741824.0
         elif MetricName == "NumberOfObjects" and storage_type == "AllStorageTypes":
             average = 42.0
         else:
             average = 0.0
-        return {"Datapoints": [{"Timestamp": datetime(2026, 6, 16, tzinfo=timezone.utc), "Average": average}]}
+        return {
+            "Datapoints": [
+                {"Timestamp": datetime(2026, 6, 16, tzinfo=timezone.utc), "Average": average}
+            ]
+        }
 
 
 class FakeFactory:
