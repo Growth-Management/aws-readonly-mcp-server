@@ -2,9 +2,9 @@
 
 Update this file only when intentionally triggering the Deploy to Cloud Run workflow from an external agent.
 
-Last requested: 2026-06-16T23:45:00Z
+Last requested: 2026-06-17T00:28:00Z
 Requested by: ChatGPT AWS cost inventory advisor
-Purpose: Trigger Deploy to Cloud Run after adding MCP action discovery endpoints.
-Target merge commit: pending merge of codex/add-mcp-action-discovery-20260617-v2
+Purpose: Trigger Deploy to Cloud Run after merging MCP action discovery endpoints.
+Target merge commit: e9a675127f5ea361a366f56f8f5345c08118e471
 Previous workflow fix commit: 77c51256de0346b7dcc76e3168b9bf1e29a66774
-Requested action: start a new Deploy to Cloud Run run from current main after merge
+Requested action: start a new Deploy to Cloud Run run from current main
