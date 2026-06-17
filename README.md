@@ -25,13 +25,14 @@ This server is intended to support:
 The server exposes health and read-only tool endpoints:
 
 - `GET /health`
+- `GET /mcp/actions`
 - `GET /tools/get_caller_identity`
 - `GET /tools/list_s3_buckets`
 - `GET /tools/get_s3_bucket_details?bucket=<bucket-name>`
 - `GET /tools/get_s3_bucket_security?bucket=<bucket-name>`
 - `POST /mcp`
 
-All `/tools/*` endpoints and `/mcp` require:
+All `/mcp/actions`, `/tools/*`, and `/mcp` endpoints require:
 
 ```text
 Authorization: Bearer <MCP_AUTH_TOKEN>
@@ -43,6 +44,11 @@ The `/mcp` endpoint supports the JSON-RPC methods needed for basic MCP tool disc
 - `initialize`
 - `tools/list`
 - `tools/call`
+
+The `/mcp` endpoint also supports lightweight action discovery requests:
+
+- `list_actions`
+- `get_action_definition`
 
 Available tools:
 
@@ -59,6 +65,16 @@ curl -sS -X POST \
   -H "Content-Type: application/json" \
   "${SERVICE_URL}/mcp" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Example MCP action list request:
+
+```bash
+curl -sS -X POST \
+  -H "Authorization: Bearer ${MCP_AUTH_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${SERVICE_URL}/mcp" \
+  -d '{"action":"list_actions","params":{}}'
 ```
 
 Example MCP tool call:
@@ -166,6 +182,18 @@ curl -sS \
   "http://localhost:8081/tools/get_s3_bucket_security?bucket=hbs-report" \
   | jq .
 
+curl -sS \
+  -H "Authorization: Bearer ${MCP_AUTH_TOKEN}" \
+  http://localhost:8081/mcp/actions \
+  | jq .
+
+curl -sS -X POST \
+  -H "Authorization: Bearer ${MCP_AUTH_TOKEN}" \
+  -H "Content-Type: application/json" \
+  http://localhost:8081/mcp \
+  -d '{"action":"list_actions","params":{}}' \
+  | jq .
+
 curl -sS -X POST \
   -H "Authorization: Bearer ${MCP_AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -178,6 +206,6 @@ kill "$PROXY_PID"
 
 ## Recommended Next Steps
 1. Deploy the updated Cloud Run revision.
-2. Validate `get_s3_bucket_details`, `get_s3_bucket_security`, and `/mcp` through Cloud Shell proxy.
+2. Validate `get_s3_bucket_details`, `get_s3_bucket_security`, `/mcp/actions`, `list_actions`, and `/mcp` through Cloud Shell proxy.
 3. Decide how ChatGPT will reach the private Cloud Run service.
 4. Add Cost Explorer and Storage Lens tools after the S3 metadata/security path is stable.

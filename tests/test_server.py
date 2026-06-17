@@ -18,6 +18,34 @@ def test_mcp_lists_expected_tools() -> None:
     assert "get_s3_bucket_security" in tool_names
 
 
+def test_list_actions_returns_expected_actions() -> None:
+    server = create_server()
+    action_names = {action["name"] for action in server.list_actions()}
+
+    assert "get_caller_identity" in action_names
+    assert "get_s3_bucket_details" in action_names
+    assert "get_monthly_cost_by_service" in action_names
+    assert "list_ec2_instances" in action_names
+
+
+def test_handle_action_request_lists_actions() -> None:
+    server = create_server()
+    response = server.handle_action_request({"action": "list_actions", "params": {}})
+
+    assert response["status"] == "ok"
+    assert any(action["name"] == "get_s3_bucket_details" for action in response["actions"])
+
+
+def test_handle_action_request_gets_action_definition() -> None:
+    server = create_server()
+    response = server.handle_action_request(
+        {"action": "get_action_definition", "params": {"action_name": "get_s3_bucket_details"}}
+    )
+
+    assert response["status"] == "ok"
+    assert response["action_definition"]["name"] == "get_s3_bucket_details"
+
+
 def test_mcp_initialize_response() -> None:
     server = create_server()
     response = server.handle_mcp_request(

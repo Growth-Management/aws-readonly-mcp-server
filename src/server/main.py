@@ -19,6 +19,7 @@ from src.services.s3_security import S3SecurityService
 from src.services.ses_health import SESHealthService
 from src.services.trusted_advisor import TrustedAdvisorService
 
+from .action_definitions import get_action_definition, list_action_definitions
 from .config import load_settings
 
 
@@ -82,6 +83,9 @@ class MCPServer:
 
     def list_trusted_advisor_checks(self, language: str = "ja") -> dict[str, Any]:
         return self.trusted_advisor.list_checks(language=language)
+
+    def list_actions(self) -> list[dict[str, Any]]:
+        return list_action_definitions()
 
     def list_mcp_tools(self) -> list[dict[str, Any]]:
         return [
@@ -194,6 +198,24 @@ class MCPServer:
                 },
             },
         ]
+
+    def handle_action_request(self, request: dict[str, Any]) -> dict[str, Any]:
+        action = request.get("action")
+        params = request.get("params", {}) or {}
+
+        if action == "list_actions":
+            return {"status": "ok", "actions": self.list_actions()}
+
+        if action == "get_action_definition":
+            action_name = params.get("action_name")
+            if not action_name:
+                return {"status": "error", "message": "action_name is required"}
+            definition = get_action_definition(str(action_name))
+            if definition is None:
+                return {"status": "error", "message": f"unknown_action:{action_name}"}
+            return {"status": "ok", "action_definition": definition}
+
+        return {"status": "error", "message": f"unknown_action:{action}"}
 
     def handle_mcp_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         request_id = request.get("id")
@@ -316,6 +338,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         server = create_server()
+
+        if path == "/mcp/actions":
+            self._send_json(HTTPStatus.OK, {"status": "ok", "actions": server.list_actions()})
+            return
+
         simple_routes = {
             "/tools/get_caller_identity": server.get_caller_identity,
             "/tools/list_s3_buckets": server.list_s3_buckets,
@@ -391,7 +418,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             )
             return
 
-        response = create_server().handle_mcp_request(request)
+        server = create_server()
+        if "action" in request:
+            self._send_json(HTTPStatus.OK, server.handle_action_request(request))
+            return
+
+        response = server.handle_mcp_request(request)
         if response is None:
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
