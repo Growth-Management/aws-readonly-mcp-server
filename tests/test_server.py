@@ -16,6 +16,7 @@ def test_mcp_lists_expected_tools() -> None:
     assert "list_s3_buckets" in tool_names
     assert "get_s3_bucket_details" in tool_names
     assert "get_s3_bucket_security" in tool_names
+    assert "get_cloudwatch_metric_summary" in tool_names
 
 
 def test_list_actions_returns_expected_actions() -> None:
@@ -25,6 +26,7 @@ def test_list_actions_returns_expected_actions() -> None:
     assert "get_caller_identity" in action_names
     assert "get_s3_bucket_details" in action_names
     assert "get_monthly_cost_by_service" in action_names
+    assert "get_cloudwatch_metric_summary" in action_names
     assert "list_ec2_instances" in action_names
 
 
@@ -72,3 +74,28 @@ def test_mcp_tool_call_requires_bucket_name() -> None:
     assert response is not None
     assert response["result"]["isError"] is True
     assert "bucket_name is required" in response["result"]["content"][0]["text"]
+
+
+def test_mcp_tool_call_routes_cloudwatch_metric_summary(monkeypatch) -> None:
+    server = create_server()
+
+    def fake_summary(namespace=None):
+        return {"status": "ok", "namespace": namespace, "summaries": []}
+
+    monkeypatch.setattr(server.cloudwatch_metrics, "get_metric_summary", fake_summary)
+    response = server.handle_mcp_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "get_cloudwatch_metric_summary",
+                "arguments": {"namespace": "AWS/EC2"},
+            },
+        }
+    )
+
+    assert response is not None
+    content = response["result"]["structuredContent"]
+    assert content["status"] == "ok"
+    assert content["namespace"] == "AWS/EC2"
