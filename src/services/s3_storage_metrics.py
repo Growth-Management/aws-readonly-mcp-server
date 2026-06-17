@@ -26,7 +26,11 @@ class S3StorageMetricsService:
             metrics = self._list_storage_metrics(cloudwatch, bucket_name=bucket_name)
             summaries = self._build_bucket_summaries(cloudwatch, metrics, days=max(1, days))
         except Exception as error:
-            return {"status": "error", "error_type": type(error).__name__, "message": str(error)}
+            return {
+                "status": "error",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }
 
         return {
             "status": "ok",
@@ -37,7 +41,11 @@ class S3StorageMetricsService:
             "buckets": summaries,
         }
 
-    def _list_storage_metrics(self, cloudwatch, bucket_name: str | None = None) -> list[dict[str, Any]]:
+    def _list_storage_metrics(
+        self,
+        cloudwatch,
+        bucket_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         paginator = cloudwatch.get_paginator("list_metrics")
         metrics: list[dict[str, Any]] = []
 
@@ -144,7 +152,8 @@ class S3StorageMetricsService:
         datapoints = response.get("Datapoints", [])
         if not datapoints:
             return None
-        return max(datapoints, key=lambda item: item.get("Timestamp", datetime.min.replace(tzinfo=timezone.utc)))
+        fallback = datetime.min.replace(tzinfo=timezone.utc)
+        return max(datapoints, key=lambda item: item.get("Timestamp", fallback))
 
 
 def _dimensions_by_name(dimensions: list[dict[str, Any]]) -> dict[str, str]:
