@@ -38,6 +38,13 @@ LANGUAGE_PROPERTY = {
     }
 }
 
+CLOUDWATCH_NAMESPACE_PROPERTY = {
+    "namespace": {
+        "type": "string",
+        "description": "Optional CloudWatch namespace, for example AWS/EC2 or AWS/S3.",
+    }
+}
+
 ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_caller_identity": {
         "name": "get_caller_identity",
@@ -84,6 +91,11 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
         "name": "get_monthly_cost_by_service",
         "description": "Get monthly AWS costs grouped by service using Cost Explorer.",
         "input_schema": _schema(MONTHS_PROPERTY),
+    },
+    "get_cloudwatch_metric_summary": {
+        "name": "get_cloudwatch_metric_summary",
+        "description": "Get CloudWatch metric availability summaries by namespace.",
+        "input_schema": _schema(CLOUDWATCH_NAMESPACE_PROPERTY),
     },
     "list_ec2_instances": {
         "name": "list_ec2_instances",
