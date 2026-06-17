@@ -32,7 +32,7 @@ jobs:
 
       - name: Format check
         run: |
-          if [ -d src ]; then ruff format --check src tests; fi
+          if [ -d src ]; then ruff format --check --diff src tests; fi
 
       - name: Type check
         run: |
