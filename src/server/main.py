@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from src.aws.client_factory import AWSClientFactory
+from src.services.cloudwatch_metrics import CloudWatchMetricsService
 from src.services.cost_explorer import CostExplorerService
 from src.services.ec2_inventory import EC2InventoryService
 from src.services.rds_inventory import RDSInventoryService
@@ -27,6 +28,7 @@ class MCPServer:
     def __init__(self) -> None:
         self.settings = load_settings()
         self.aws_factory = AWSClientFactory(self.settings)
+        self.cloudwatch_metrics = CloudWatchMetricsService(self.aws_factory)
         self.cost_explorer = CostExplorerService(self.aws_factory)
         self.ec2_inventory = EC2InventoryService(self.aws_factory)
         self.rds_inventory = RDSInventoryService(self.aws_factory)
@@ -68,6 +70,9 @@ class MCPServer:
 
     def get_monthly_cost_by_service(self, months: int = 3) -> dict[str, Any]:
         return self.cost_explorer.get_monthly_cost_by_service(months=months)
+
+    def get_cloudwatch_metric_summary(self, namespace: str | None = None) -> dict[str, Any]:
+        return self.cloudwatch_metrics.get_metric_summary(namespace=namespace)
 
     def list_ec2_instances(self) -> dict[str, Any]:
         return self.ec2_inventory.list_instances()
@@ -140,6 +145,15 @@ class MCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {"months": {"type": "integer", "default": 3}},
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_cloudwatch_metric_summary",
+                "description": "Return CloudWatch metric availability summaries by namespace.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"namespace": {"type": "string"}},
                     "additionalProperties": False,
                 },
             },
@@ -265,6 +279,11 @@ class MCPServer:
             payload = self.get_s3_cost_summary(int(arguments.get("months", 3)))
         elif tool_name == "get_monthly_cost_by_service":
             payload = self.get_monthly_cost_by_service(int(arguments.get("months", 3)))
+        elif tool_name == "get_cloudwatch_metric_summary":
+            namespace = arguments.get("namespace") or arguments.get("service_name")
+            payload = self.get_cloudwatch_metric_summary(
+                namespace=str(namespace) if namespace else None
+            )
         elif tool_name == "list_ec2_instances":
             payload = self.list_ec2_instances()
         elif tool_name == "list_ec2_volumes":
@@ -367,6 +386,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 server.get_monthly_cost_by_service(_int_query(query, "months", 3)),
             )
+            return
+
+        if path == "/tools/get_cloudwatch_metric_summary":
+            namespace = _str_query(query, "namespace", "") or None
+            self._send_json(HTTPStatus.OK, server.get_cloudwatch_metric_summary(namespace))
             return
 
         if path == "/tools/list_trusted_advisor_checks":
