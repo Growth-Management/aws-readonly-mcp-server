@@ -25,7 +25,7 @@ class CloudWatchMetricsService:
 
         return {"status": "ok", "namespace": namespace, "summaries": summaries}
 
-    def _summarize_namespace(self, cloudwatch: object, namespace: str) -> dict[str, object]:
+    def _summarize_namespace(self, cloudwatch, namespace: str) -> dict[str, object]:
         paginator = cloudwatch.get_paginator("list_metrics")
         metric_names: set[str] = set()
         dimension_names: set[str] = set()
