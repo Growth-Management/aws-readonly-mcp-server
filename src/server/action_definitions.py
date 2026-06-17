@@ -48,7 +48,9 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_s3_cost_summary": {
         "name": "get_s3_cost_summary",
         "description": "Get an S3-oriented cost summary for the requested lookback window.",
-        "input_schema": _schema({"months": {"type": "integer", "minimum": 1, "default": 3}}),
+        "input_schema": _schema(
+            {"months": {"type": "integer", "minimum": 1, "default": 3}}
+        ),
     },
     "get_s3_request_metrics": {
         "name": "get_s3_request_metrics",
@@ -75,7 +77,9 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_monthly_cost_by_service": {
         "name": "get_monthly_cost_by_service",
         "description": "Get monthly AWS costs grouped by service using Cost Explorer.",
-        "input_schema": _schema({"months": {"type": "integer", "minimum": 1, "default": 3}}),
+        "input_schema": _schema(
+            {"months": {"type": "integer", "minimum": 1, "default": 3}}
+        ),
     },
     "list_ec2_instances": {
         "name": "list_ec2_instances",
