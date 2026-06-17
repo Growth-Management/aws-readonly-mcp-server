@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 from src.aws.client_factory import AWSClientFactory
 
 
