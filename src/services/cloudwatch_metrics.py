@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from src.aws.client_factory import AWSClientFactory
 
 
