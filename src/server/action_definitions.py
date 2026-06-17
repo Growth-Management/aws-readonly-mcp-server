@@ -22,6 +22,22 @@ BUCKET_NAME_PROPERTY = {
     }
 }
 
+OPTIONAL_BUCKET_NAME_PROPERTY = {
+    "bucket_name": {
+        "type": "string",
+        "description": "Optional S3 bucket name. Omit to summarize all buckets with metrics.",
+    }
+}
+
+DAYS_PROPERTY = {
+    "days": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 7,
+        "description": "Lookback window in days for daily S3 storage metrics.",
+    }
+}
+
 MONTHS_PROPERTY = {
     "months": {
         "type": "integer",
@@ -72,6 +88,14 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
         "name": "get_s3_cost_summary",
         "description": "Get an S3-oriented cost summary for the requested lookback window.",
         "input_schema": _schema(MONTHS_PROPERTY),
+    },
+    "get_s3_bucket_size_summary": {
+        "name": "get_s3_bucket_size_summary",
+        "description": (
+            "Get daily S3 BucketSizeBytes and NumberOfObjects datapoints by bucket "
+            "from CloudWatch storage metrics."
+        ),
+        "input_schema": _schema({**OPTIONAL_BUCKET_NAME_PROPERTY, **DAYS_PROPERTY}),
     },
     "get_s3_request_metrics": {
         "name": "get_s3_request_metrics",
