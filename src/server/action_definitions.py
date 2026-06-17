@@ -57,8 +57,7 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_s3_bucket_security": {
         "name": "get_s3_bucket_security",
         "description": (
-            "Get public access, ACL, bucket policy, and encryption information for "
-            "one S3 bucket."
+            "Get public access, ACL, bucket policy, and encryption information for one S3 bucket."
         ),
         "input_schema": _schema(BUCKET_NAME_PROPERTY, ["bucket_name"]),
     },
@@ -70,16 +69,14 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_s3_request_metrics": {
         "name": "get_s3_request_metrics",
         "description": (
-            "Get S3 request metric availability and recent metric datapoints for "
-            "one bucket."
+            "Get S3 request metric availability and recent metric datapoints for one bucket."
         ),
         "input_schema": _schema(BUCKET_NAME_PROPERTY, ["bucket_name"]),
     },
     "get_s3_transfer_summary": {
         "name": "get_s3_transfer_summary",
         "description": (
-            "Get S3 transfer metric availability and recent metric datapoints for "
-            "one bucket."
+            "Get S3 transfer metric availability and recent metric datapoints for one bucket."
         ),
         "input_schema": _schema(BUCKET_NAME_PROPERTY, ["bucket_name"]),
     },
@@ -106,8 +103,7 @@ ACTION_DEFINITIONS: dict[str, dict[str, Any]] = {
     "get_ses_basic_health": {
         "name": "get_ses_basic_health",
         "description": (
-            "Return SES identity count, sandbox/production access, and send quota "
-            "basics."
+            "Return SES identity count, sandbox/production access, and send quota basics."
         ),
         "input_schema": _schema(),
     },
