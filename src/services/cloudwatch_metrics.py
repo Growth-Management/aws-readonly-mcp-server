@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from src.aws.client_factory import AWSClientFactory
 
 
@@ -17,7 +15,7 @@ class CloudWatchMetricsService:
     def __init__(self, factory: AWSClientFactory | None = None) -> None:
         self.factory = factory or AWSClientFactory()
 
-    def get_metric_summary(self, namespace: str | None = None) -> dict[str, Any]:
+    def get_metric_summary(self, namespace: str | None = None) -> dict[str, object]:
         try:
             cloudwatch = self.factory.create_client("cloudwatch")
             namespaces = [namespace] if namespace else DEFAULT_NAMESPACES
@@ -27,7 +25,7 @@ class CloudWatchMetricsService:
 
         return {"status": "ok", "namespace": namespace, "summaries": summaries}
 
-    def _summarize_namespace(self, cloudwatch: Any, namespace: str) -> dict[str, Any]:
+    def _summarize_namespace(self, cloudwatch: object, namespace: str) -> dict[str, object]:
         paginator = cloudwatch.get_paginator("list_metrics")
         metric_names: set[str] = set()
         dimension_names: set[str] = set()
