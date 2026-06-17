@@ -16,6 +16,7 @@ def test_mcp_lists_expected_tools() -> None:
     assert "list_s3_buckets" in tool_names
     assert "get_s3_bucket_details" in tool_names
     assert "get_s3_bucket_security" in tool_names
+    assert "get_s3_bucket_size_summary" in tool_names
     assert "get_cloudwatch_metric_summary" in tool_names
 
 
@@ -25,6 +26,7 @@ def test_list_actions_returns_expected_actions() -> None:
 
     assert "get_caller_identity" in action_names
     assert "get_s3_bucket_details" in action_names
+    assert "get_s3_bucket_size_summary" in action_names
     assert "get_monthly_cost_by_service" in action_names
     assert "get_cloudwatch_metric_summary" in action_names
     assert "list_ec2_instances" in action_names
@@ -99,3 +101,29 @@ def test_mcp_tool_call_routes_cloudwatch_metric_summary(monkeypatch) -> None:
     content = response["result"]["structuredContent"]
     assert content["status"] == "ok"
     assert content["namespace"] == "AWS/EC2"
+
+
+def test_mcp_tool_call_routes_s3_bucket_size_summary(monkeypatch) -> None:
+    server = create_server()
+
+    def fake_summary(bucket_name=None, days=7):
+        return {"status": "ok", "bucket_name": bucket_name, "days": days, "buckets": []}
+
+    monkeypatch.setattr(server.s3_storage_metrics, "get_bucket_size_summary", fake_summary)
+    response = server.handle_mcp_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "get_s3_bucket_size_summary",
+                "arguments": {"bucket_name": "example-bucket", "days": 3},
+            },
+        }
+    )
+
+    assert response is not None
+    content = response["result"]["structuredContent"]
+    assert content["status"] == "ok"
+    assert content["bucket_name"] == "example-bucket"
+    assert content["days"] == 3

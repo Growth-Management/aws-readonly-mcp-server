@@ -17,6 +17,7 @@ from src.services.s3_costs import S3CostService
 from src.services.s3_inventory import S3InventoryService
 from src.services.s3_metrics import S3MetricsService
 from src.services.s3_security import S3SecurityService
+from src.services.s3_storage_metrics import S3StorageMetricsService
 from src.services.ses_health import SESHealthService
 from src.services.trusted_advisor import TrustedAdvisorService
 
@@ -36,6 +37,7 @@ class MCPServer:
         self.s3_inventory = S3InventoryService(self.aws_factory)
         self.s3_metrics = S3MetricsService(self.aws_factory)
         self.s3_security = S3SecurityService(self.aws_factory)
+        self.s3_storage_metrics = S3StorageMetricsService(self.aws_factory)
         self.ses_health = SESHealthService(self.aws_factory)
         self.trusted_advisor = TrustedAdvisorService(self.aws_factory)
 
@@ -61,6 +63,13 @@ class MCPServer:
 
     def get_s3_cost_summary(self, months: int = 3) -> dict[str, Any]:
         return self.s3_costs.get_cost_summary(months=months)
+
+    def get_s3_bucket_size_summary(
+        self,
+        bucket_name: str | None = None,
+        days: int = 7,
+    ) -> dict[str, Any]:
+        return self.s3_storage_metrics.get_bucket_size_summary(bucket_name=bucket_name, days=days)
 
     def get_s3_request_metrics(self, bucket_name: str) -> dict[str, Any]:
         return self.s3_metrics.get_request_metrics(bucket_name)
@@ -136,6 +145,20 @@ class MCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {"months": {"type": "integer", "default": 3}},
+                    "additionalProperties": False,
+                },
+            },
+            {
+                "name": "get_s3_bucket_size_summary",
+                "description": (
+                    "Return daily S3 BucketSizeBytes and NumberOfObjects datapoints by bucket."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "bucket_name": {"type": "string"},
+                        "days": {"type": "integer", "default": 7},
+                    },
                     "additionalProperties": False,
                 },
             },
@@ -277,6 +300,12 @@ class MCPServer:
             payload = self.get_s3_bucket_security(str(bucket_name))
         elif tool_name == "get_s3_cost_summary":
             payload = self.get_s3_cost_summary(int(arguments.get("months", 3)))
+        elif tool_name == "get_s3_bucket_size_summary":
+            bucket_name = arguments.get("bucket_name") or arguments.get("bucket")
+            payload = self.get_s3_bucket_size_summary(
+                bucket_name=str(bucket_name) if bucket_name else None,
+                days=int(arguments.get("days", 7)),
+            )
         elif tool_name == "get_monthly_cost_by_service":
             payload = self.get_monthly_cost_by_service(int(arguments.get("months", 3)))
         elif tool_name == "get_cloudwatch_metric_summary":
@@ -378,6 +407,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._send_json(
                 HTTPStatus.OK,
                 server.get_s3_cost_summary(_int_query(query, "months", 3)),
+            )
+            return
+
+        if path == "/tools/get_s3_bucket_size_summary":
+            bucket_name = self._first_query_value(query, "bucket") or self._first_query_value(
+                query, "bucket_name"
+            )
+            self._send_json(
+                HTTPStatus.OK,
+                server.get_s3_bucket_size_summary(
+                    bucket_name=bucket_name,
+                    days=_int_query(query, "days", 7),
+                ),
             )
             return
 
